@@ -25,6 +25,8 @@ const (
 	OtherVal
 )
 
+var ErrShortReadTagValue = errors.New("tiff: short read of tag value")
+
 var formatNames = map[Format]string{
 	IntVal:    "int",
 	FloatVal:  "float",
@@ -39,17 +41,17 @@ type DataType uint16
 
 const (
 	DTByte      DataType = 1
-	DTAscii              = 2
-	DTShort              = 3
-	DTLong               = 4
-	DTRational           = 5
-	DTSByte              = 6
-	DTUndefined          = 7
-	DTSShort             = 8
-	DTSLong              = 9
-	DTSRational          = 10
-	DTFloat              = 11
-	DTDouble             = 12
+	DTAscii     DataType = 2
+	DTShort     DataType = 3
+	DTLong      DataType = 4
+	DTRational  DataType = 5
+	DTSByte     DataType = 6
+	DTUndefined DataType = 7
+	DTSShort    DataType = 8
+	DTSLong     DataType = 9
+	DTSRational DataType = 10
+	DTFloat     DataType = 11
+	DTDouble    DataType = 12
 )
 
 var typeNames = map[DataType]string{
@@ -111,7 +113,7 @@ type Tag struct {
 // first read from r should be the first byte of the tag. ReadAt offsets should
 // generally be relative to the beginning of the tiff structure (not relative
 // to the beginning of the tag).
-func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
+func DecodeTag(r ReadAtReader, order binary.ByteOrder, position_offset uint32) (*Tag, error) {
 	t := new(Tag)
 	t.order = order
 
@@ -144,6 +146,8 @@ func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 	if valLen > 4 {
 		binary.Read(r, order, &t.ValOffset)
 
+		t.ValOffset -= position_offset
+
 		// Use a bytes.Buffer so we don't allocate a huge slice if the tag
 		// is corrupt.
 		var buff bytes.Buffer
@@ -152,7 +156,7 @@ func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 		if err != nil {
 			return t, errors.New("tiff: tag value read failed: " + err.Error())
 		} else if n != int64(valLen) {
-			return t, errors.New("tiff: short read of tag value")
+			return t, ErrShortReadTagValue
 		}
 		t.Val = buff.Bytes()
 
@@ -177,8 +181,15 @@ func (t *Tag) convertVals() error {
 
 	switch t.Type {
 	case DTAscii:
-		if len(t.Val) > 0 {
-			t.strVal = string(t.Val[:len(t.Val)-1]) // ignore the last byte (NULL).
+		if len(t.Val) <= 0 {
+			break
+		}
+		nullPos := bytes.IndexByte(t.Val, 0)
+		if nullPos == -1 {
+			t.strVal = string(t.Val)
+		} else {
+			// ignore all trailing NULL bytes, in case of a broken t.Count
+			t.strVal = string(t.Val[:nullPos])
 		}
 	case DTByte:
 		var v uint8
