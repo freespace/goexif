@@ -1,3 +1,14 @@
+DecodeFile()
+============
+
+This fork of `goexif` introduces `tiff.DecodeFile()` which attempts to read _only_ the metadata.
+This is helpful when attempting to read hundreds and thousands of 100MB TIFF files. `DecodeFile`
+works exactly the same as `tiff.Decode()` with the following caveats:
+
+1. It assumes all metadata is stored after the first IFD entry
+1. Because of the above it cannot deal with cases where some metadata value is stored _before_ the
+   start of the first IFD entry
+
 goexif
 ======
 
