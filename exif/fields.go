@@ -87,6 +87,8 @@ const (
 	Sharpness                            = "Sharpness"
 	DeviceSettingDescription             = "DeviceSettingDescription"
 	SubjectDistanceRange                 = "SubjectDistanceRange"
+
+	BodySerialNumber                     = "BodySerialNumber"
 )
 
 // thumbnail fields
@@ -237,6 +239,7 @@ var exifFields = map[uint16]FieldName{
 	0xA40A: Sharpness,
 	0xA40B: DeviceSettingDescription,
 	0xA40C: SubjectDistanceRange,
+	0xA431: BodySerialNumber,
 }
 
 var gpsFields = map[uint16]FieldName{
